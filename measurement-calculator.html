@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Measurement Calculator - Convert All Units</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
+        h1 { text-align: center; color: #333; }
+        .converter { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #result { font-size: 18px; font-weight: bold; color: #28a745; margin-top: 10px; }
+        @media (max-width: 600px) { body { padding: 10px; } }
+    </style>
+</head>
+<body>
+    <h1>🧮 Universal Measurement Calculator</h1>
+    <p style="text-align: center;">Convert between units for length, area, volume, weight, temperature, speed, time, energy, power, pressure & more. Enter a value and select units!</p>
+
+    <div class="converter">
+        <label for="category">Select Category:</label>
+        <select id="category">
+            <option value="length">Length/Distance</option>
+            <option value="area">Area</option>
+            <option value="volume">Volume</option>
+            <option value="mass">Mass/Weight</option>
+            <option value="temperature">Temperature</option>
+            <option value="speed">Speed</option>
+            <option value="time">Time</option>
+            <option value="energy">Energy</option>
+            <option value="power">Power</option>
+            <option value="pressure">Pressure</option>
+        </select>
+
+        <label for="value">Enter Value:</label>
+        <input type="number" id="value" placeholder="e.g., 10" step="any">
+
+        <label for="fromUnit">From Unit:</label>
+        <select id="fromUnit"></select>
+
+        <label for="toUnit">To Unit:</label>
+        <select id="toUnit"></select>
+
+        <button onclick="convert()">Convert</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const conversions = {
+            length: {
+                units: ['meters (m)', 'kilometers (km)', 'centimeters (cm)', 'millimeters (mm)', 'inches (in)', 'feet (ft)', 'yards (yd)', 'miles (mi)'],
+                base: 'meters',
+                factors: { 'meters (m)': 1, 'kilometers (km)': 0.001, 'centimeters (cm)': 100, 'millimeters (mm)': 1000, 'inches (in)': 39.3701, 'feet (ft)': 3.28084, 'yards (yd)': 1.09361, 'miles (mi)': 0.000621371 }
+            },
+            area: {
+                units: ['square meters (m²)', 'square kilometers (km²)', 'square centimeters (cm²)', 'square inches (in²)', 'square feet (ft²)', 'acres', 'hectares'],
+                base: 'square meters',
+                factors: { 'square meters (m²)': 1, 'square kilometers (km²)': 0.000001, 'square centimeters (cm²)': 10000, 'square inches (in²)': 1550.00, 'square feet (ft²)': 10.7639, 'acres': 0.000247105, 'hectares': 0.0001 }
+            },
+            volume: {
+                units: ['cubic meters (m³)', 'liters (L)', 'milliliters (mL)', 'cubic centimeters (cm³)', 'cubic inches (in³)', 'cubic feet (ft³)', 'US gallons (gal)', 'UK gallons (gal)'],
+                base: 'cubic meters',
+                factors: { 'cubic meters (m³)': 1, 'liters (L)': 1000, 'milliliters (mL)': 1000000, 'cubic centimeters (cm³)': 1000000, 'cubic inches (in³)': 61023.7, 'cubic feet (ft³)': 35.3147, 'US gallons (gal)': 264.172, 'UK gallons (gal)': 219.969 }
+            },
+            mass: {
+                units: ['kilograms (kg)', 'grams (g)', 'milligrams (mg)', 'pounds (lb)', 'ounces (oz)', 'tons (US)', 'metric tons (t)'],
+                base: 'kilograms',
+                factors: { 'kilograms (kg)': 1, 'grams (g)': 1000, 'milligrams (mg)': 1000000, 'pounds (lb)': 2.20462, 'ounces (oz)': 35.274, 'tons (US)': 0.00110231, 'metric tons (t)': 0.001 }
+            },
+            temperature: {
+                units: ['Celsius (°C)', 'Fahrenheit (°F)', 'Kelvin (K)'],
+                base: 'celsius',
+                // Special handling for temp
+                convert: (val, from, to) => {
+                    if (from === 'Celsius (°C)') {
+                        if (to === 'Fahrenheit (°F)') return (val * 9/5) + 32;
+                        if (to === 'Kelvin (K)') return val + 273.15;
+                    } else if (from === 'Fahrenheit (°F)') {
+                        if (to === 'Celsius (°C)') return (val - 32) * 5/9;
+                        if (to === 'Kelvin (K)') return ((val - 32) * 5/9) + 273.15;
+                    } else if (from === 'Kelvin (K)') {
+                        if (to === 'Celsius (°C)') return val - 273.15;
+                        if (to === 'Fahrenheit (°F)') return ((val - 273.15) * 9/5) + 32;
+                    }
+                    return val;
+                }
+            },
+            speed: {
+                units: ['meters per second (m/s)', 'kilometers per hour (km/h)', 'miles per hour (mph)', 'feet per second (ft/s)', 'knots'],
+                base: 'meters per second',
+                factors: { 'meters per second (m/s)': 1, 'kilometers per hour (km/h)': 3.6, 'miles per hour (mph)': 2.23694, 'feet per second (ft/s)': 3.28084, 'knots': 1.94384 }
+            },
+            time: {
+                units: ['seconds (s)', 'minutes (min)', 'hours (h)', 'days (d)', 'years (yr)'],
+                base: 'seconds',
+                factors: { 'seconds (s)': 1, 'minutes (min)': 60, 'hours (h)': 3600, 'days (d)': 86400, 'years (yr)': 31536000 }
+            },
+            energy: {
+                units: ['joules (J)', 'calories (cal)', 'kilowatt-hours (kWh)', 'British thermal units (BTU)'],
+                base: 'joules',
+                factors: { 'joules (J)': 1, 'calories (cal)': 0.239006, 'kilowatt-hours (kWh)': 0.000000277778, 'British thermal units (BTU)': 0.000947817 }
+            },
+            power: {
+                units: ['watts (W)', 'horsepower (hp)', 'kilowatts (kW)', 'British thermal units per hour (BTU/h)'],
+                base: 'watts',
+                factors: { 'watts (W)': 1, 'horsepower (hp)': 0.00134102, 'kilowatts (kW)': 0.001, 'British thermal units per hour (BTU/h)': 3.41214 }
+            },
+            pressure: {
+                units: ['pascals (Pa)', 'bars (bar)', 'atmospheres (atm)', 'pounds per square inch (psi)', 'millimeters of mercury (mmHg)'],
+                base: 'pascals',
+                factors: { 'pascals (Pa)': 1, 'bars (bar)': 0.00001, 'atmospheres (atm)': 9.86923e-6, 'pounds per square inch (psi)': 0.000145038, 'millimeters of mercury (mmHg)': 0.00750062 }
+            }
+        };
+
+        function populateUnits() {
+            const category = document.getElementById('category').value;
+            const fromSelect = document.getElementById('fromUnit');
+            const toSelect = document.getElementById('toUnit');
+            const config = conversions[category];
+
+            fromSelect.innerHTML = '';
+            toSelect.innerHTML = '';
+            config.units.forEach(unit => {
+                const option1 = new Option(unit, unit);
+                const option2 = new Option(unit, unit);
+                fromSelect.add(option1);
+                toSelect.add(option2);
+            });
+        }
+
+        function convert() {
+            const category = document.getElementById('category').value;
+            const value = parseFloat(document.getElementById('value').value);
+            const fromUnit = document.getElementById('fromUnit').value;
+            const toUnit = document.getElementById('toUnit').value;
+            const config = conversions[category];
+
+            if (isNaN(value)) {
+                document.getElementById('result').innerHTML = 'Please enter a valid number!';
+                return;
+            }
+
+            let result;
+            if (category === 'temperature') {
+                result = config.convert(value, fromUnit, toUnit);
+            } else {
+                const fromFactor = config.factors[fromUnit];
+                const toFactor = config.factors[toUnit];
+                result = (value / fromFactor) * toFactor;
+            }
+
+            document.getElementById('result').innerHTML = `${value} ${fromUnit} = ${result.toFixed(6)} ${toUnit}`;
+        }
+
+        // Initialize
+        document.getElementById('category').addEventListener('change', populateUnits);
+        populateUnits();
+    </script>
+</body>
+</html>
